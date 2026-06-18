@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Máquina de repaso · Parcial 18/06 · Análisis Conceptual (UCES)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0e13;
+    --surface:#141a23;
+    --line:#27313f;
+    --text:#e7e4db;
+    --muted:#8b94a3;
+    --oro:#d8b45a;     /* términos clave */
+    --menta:#5fd9ad;   /* autores */
+    --coral:#ff6b78;   /* trampas de examen */
+    --display:'Space Grotesk',system-ui,sans-serif;
+    --body:'Inter',system-ui,sans-serif;
+    --mono:'Space Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  ::selection{background:rgba(216,180,90,.28)}
+
+  /* ---------- TOP BAR ---------- */
+  header{
+    position:sticky;top:0;z-index:30;
+    background:rgba(11,14,19,.82);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+  }
+  .bar{
+    max-width:1040px;margin:0 auto;
+    padding:14px 22px;
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  }
+  .brand{display:flex;flex-direction:column;line-height:1.15}
+  .brand .t{font-family:var(--display);font-weight:700;font-size:1.02rem;letter-spacing:.2px}
+  .brand .s{font-family:var(--mono);font-size:.66rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+  .modes{display:flex;gap:6px;margin-left:auto;background:var(--surface);padding:5px;border-radius:12px;border:1px solid var(--line)}
+  .modes button{
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.5px;
+    color:var(--muted);background:transparent;border:0;cursor:pointer;
+    padding:8px 14px;border-radius:8px;transition:.18s;text-transform:uppercase;
+  }
+  .modes button:hover{color:var(--text)}
+  .modes button.active{background:var(--bg);color:var(--oro);box-shadow:inset 0 0 0 1px var(--line)}
+
+  /* ---------- LAYOUT ---------- */
+  main{max-width:1040px;margin:0 auto;padding:34px 22px 90px}
+  .lead{
+    border:1px solid var(--line);background:var(--surface);
+    border-radius:16px;padding:20px 22px;margin-bottom:30px;
+    display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;
+  }
+  .lead h1{font-family:var(--display);font-size:1.32rem;font-weight:600;letter-spacing:.2px}
+  .lead p{color:var(--muted);font-size:.92rem;max-width:560px}
+  .lead .pill{
+    font-family:var(--mono);font-size:.66rem;color:var(--coral);
+    border:1px solid rgba(255,107,120,.35);padding:5px 10px;border-radius:999px;
+    text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;
+  }
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:.68rem;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  /* ---------- ACCORDION / CONCEPTOS ---------- */
+  .topic{border:1px solid var(--line);border-radius:16px;margin-bottom:16px;overflow:hidden;background:var(--surface)}
+  .topic-head{
+    display:flex;align-items:center;gap:14px;cursor:pointer;
+    padding:18px 22px;user-select:none;transition:.18s;
+  }
+  .topic-head:hover{background:rgba(255,255,255,.02)}
+  .topic-num{
+    font-family:var(--mono);font-size:.8rem;color:var(--oro);
+    border:1px solid var(--line);border-radius:8px;padding:4px 9px;flex-shrink:0;
+  }
+  .topic-head h2{font-family:var(--display);font-size:1.06rem;font-weight:600;flex:1}
+  .topic-head .who{font-family:var(--mono);font-size:.68rem;color:var(--menta);text-transform:uppercase;letter-spacing:.5px}
+  .chev{color:var(--muted);transition:transform .25s;flex-shrink:0}
+  .topic.open .chev{transform:rotate(90deg)}
+  .topic-body{display:none;padding:0 22px 10px}
+  .topic.open .topic-body{display:block}
+
+  .concept{border-top:1px solid var(--line);padding:18px 2px}
+  .concept:first-child{border-top:0}
+  .concept .q{
+    font-family:var(--display);font-weight:500;font-size:1rem;margin-bottom:8px;
+    display:flex;align-items:baseline;gap:8px;
+  }
+  .concept .q .au{font-family:var(--mono);font-size:.74rem;color:var(--menta);font-weight:400;white-space:nowrap}
+  .concept .def{font-size:.96rem;color:var(--text)}
+  .concept .def b{color:var(--oro);font-weight:600}
+  .concept.trap{position:relative}
+  .concept.trap .q::before{content:"⚠";color:var(--coral);margin-right:2px}
+  .concept.trap .def{color:#ffd9dd}
+  .concept.trap .def b{color:var(--coral)}
+  .meta{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .wc-box{
+    font-family:var(--mono);font-size:.66rem;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:3px 10px;
+  }
+  .wc-box .wc{color:var(--oro);font-weight:700}
+  .wc-box.warn .wc{color:var(--coral)}
+  .nota{font-family:var(--mono);font-size:.68rem;color:var(--muted)}
+  .nota b{color:var(--text);font-weight:700}
+
+  /* ESQUEMA DE ANÁLISIS (método de cátedra) */
+  .metodo-title{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.8px;color:var(--menta);margin:6px 0 12px}
+  .metodo{border-top:1px solid var(--line);padding:18px 2px 6px;margin-top:4px}
+  .metodo-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .metodo-col{border:1px solid var(--line);border-radius:12px;padding:14px;background:rgba(255,255,255,.015)}
+  .mc-head{font-family:var(--display);font-weight:700;font-size:.92rem;color:var(--oro);margin-bottom:11px;display:flex;flex-direction:column}
+  .mc-head span{font-family:var(--mono);font-size:.6rem;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;margin-top:2px}
+  .mc-eje{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px dashed var(--line);font-size:.82rem}
+  .mc-eje b{color:var(--text);font-weight:600}
+  .mc-eje span{font-family:var(--mono);font-size:.72rem;color:var(--menta);text-align:right}
+
+  /* TABLA DE EJEMPLOS RESUELTOS */
+  .ejemplos{border-top:1px solid var(--line);padding:18px 2px 8px;margin-top:4px}
+  .ej-table{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .ej-row{display:grid;grid-template-columns:1.4fr 1.2fr 1.2fr;gap:12px;padding:10px 14px;border-top:1px solid var(--line);font-size:.8rem;align-items:center}
+  .ej-row:first-child{border-top:0}
+  .ej-row span:first-child{color:var(--text)}
+  .ej-row span:not(:first-child){font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+  .ej-head{background:rgba(255,255,255,.02)}
+  .ej-head span{font-family:var(--mono)!important;font-size:.62rem!important;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)!important}
+  .ej-flag span:not(:first-child) em{color:var(--coral);font-style:normal;font-weight:700}
+  .ej-flag{background:rgba(255,107,120,.05)}
+  .gen-table .ej-row span:first-child{color:var(--oro);font-weight:600}
+  .gen-table .ej-head span:first-child{color:var(--muted)!important;font-weight:400}
+
+  /* TABLA DE DESGLOSE (características / condiciones / dimensiones) — formato diferenciado */
+  .dtab{border:1px solid var(--line);border-left:3px solid var(--oro);border-radius:12px;margin-top:18px;overflow:hidden;background:rgba(216,180,90,.025)}
+  .dtab-title{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.6px;color:var(--oro);padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
+  .dtab-tag{font-size:.56rem;background:var(--oro);color:#1a1407;padding:2px 7px;border-radius:5px;font-weight:700;letter-spacing:.5px;flex-shrink:0}
+  .dtab-row{display:grid;grid-template-columns:1fr 2.1fr auto;gap:14px;padding:11px 16px;border-top:1px solid var(--line);align-items:baseline}
+  .dtab-row:first-of-type{border-top:0}
+  .dtab-head{background:rgba(255,255,255,.02)}
+  .dtab-head span{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  .dt-term{font-family:var(--display);font-weight:600;font-size:.9rem;color:var(--oro)}
+  .dt-exp{font-size:.9rem;color:var(--text)}
+  .dt-wc{font-family:var(--mono);font-size:.66rem;color:var(--menta);font-weight:700;text-align:right}
+  .dt-wc.warn{color:var(--coral)}
+  @media(max-width:560px){
+    .dtab-row{grid-template-columns:1fr;gap:4px}
+    .dtab-head{display:none}
+    .dt-term{color:var(--oro)}
+    .dt-wc{text-align:left;color:var(--muted)}
+  }
+
+  /* Layout: dos tablas a la izquierda + nota desplegable a la derecha, centrada entre ambas */
+  .tx-split{display:grid;grid-template-columns:minmax(0,1fr) clamp(230px,32%,330px);gap:20px;align-items:center}
+  .tx-left{min-width:0}
+  .tx-note{align-self:center}
+  .note-det{border:1px solid var(--line);border-left:3px solid var(--menta);border-radius:12px;background:rgba(95,217,173,.045);overflow:hidden}
+  .note-det summary{cursor:pointer;list-style:none;padding:13px 15px;font-family:var(--mono);font-size:.71rem;text-transform:uppercase;letter-spacing:.5px;color:var(--menta);display:flex;align-items:center;gap:9px}
+  .note-det summary::-webkit-details-marker{display:none}
+  .note-ic{font-size:1rem}
+  .note-hint{margin-left:auto;transition:transform .2s;font-size:.8rem}
+  .note-det[open] .note-hint{transform:rotate(180deg)}
+  .note-body{padding:2px 15px 14px;border-top:1px solid var(--line)}
+  .note-body p{font-size:.85rem;color:var(--text);margin:11px 0}
+  .note-body p b{color:var(--menta)}
+  .note-foot{font-family:var(--mono);font-size:.72rem;color:var(--muted)!important;line-height:1.5}
+  @media(max-width:640px){
+    .tx-split{grid-template-columns:1fr;align-items:stretch;gap:16px}
+    .tx-note{align-self:stretch}
+  }
+
+  /* Popup de aviso de nueva versión */
+  .updbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(140%);z-index:100;
+    display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--menta);
+    border-radius:14px;padding:12px 14px 12px 18px;box-shadow:0 14px 44px rgba(0,0,0,.55);
+    max-width:calc(100vw - 32px);opacity:0;transition:transform .35s cubic-bezier(.2,.8,.2,1),opacity .35s}
+  .updbar.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .updbar.hidden{display:none}
+  .updbar-dot{width:9px;height:9px;border-radius:50%;background:var(--menta);box-shadow:0 0 0 4px rgba(95,217,173,.18);flex-shrink:0;animation:updpulse 1.6s infinite}
+  @keyframes updpulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .updbar-txt{display:flex;flex-direction:column;line-height:1.25}
+  .updbar-txt b{font-family:var(--display);font-size:.92rem;font-weight:600;color:var(--text)}
+  .updbar-txt span{font-family:var(--mono);font-size:.65rem;color:var(--muted)}
+  .updbar-btn{font-family:var(--mono);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+    cursor:pointer;background:var(--menta);color:#08130d;border:0;padding:9px 16px;border-radius:9px;transition:.15s;white-space:nowrap}
+  .updbar-btn:hover{filter:brightness(1.08)}
+  .updbar-x{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:.95rem;padding:4px 6px;line-height:1}
+  .updbar-x:hover{color:var(--text)}
+  @media(max-width:480px){
+    .updbar{left:14px;right:14px;bottom:14px;transform:translateY(140%);max-width:none}
+    .updbar.show{transform:translateY(0)}
+  }
+  .ej-pie{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:11px}
+  .ej-pie b{color:var(--coral);font-weight:700}
+  @media(max-width:560px){
+    .metodo-grid{grid-template-columns:1fr}
+    .ej-row{grid-template-columns:1fr;gap:3px}
+    .ej-head{display:none}
+    .ej-row span:not(:first-child)::before{content:attr(data-l)}
+  }
+
+  /* ---------- TARJETAS / FLIP ---------- */
+  .cards-toolbar{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+  .filterbtn{
+    font-family:var(--mono);font-size:.7rem;letter-spacing:.4px;cursor:pointer;
+    color:var(--muted);background:var(--surface);border:1px solid var(--line);
+    padding:7px 13px;border-radius:999px;transition:.16s;text-transform:uppercase;
+  }
+  .filterbtn:hover{color:var(--text)}
+  .filterbtn.active{color:var(--oro);border-color:var(--oro)}
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:16px}
+  .flip{perspective:1200px;height:210px;cursor:pointer}
+  .flip-inner{position:relative;width:100%;height:100%;transition:transform .55s cubic-bezier(.4,.1,.2,1);transform-style:preserve-3d}
+  .flip.flipped .flip-inner{transform:rotateY(180deg)}
+  .face{
+    position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+    border:1px solid var(--line);border-radius:16px;padding:18px;
+    display:flex;flex-direction:column;background:var(--surface);overflow:hidden;
+  }
+  .face .tag{font-family:var(--mono);font-size:.62rem;letter-spacing:.7px;color:var(--muted);text-transform:uppercase;margin-bottom:auto}
+  .front .q{font-family:var(--display);font-weight:600;font-size:1.05rem;margin-top:14px}
+  .front .hint{font-family:var(--mono);font-size:.64rem;color:var(--muted);margin-top:14px}
+  .back{transform:rotateY(180deg);background:#10151d}
+  .back .au{font-family:var(--mono);font-size:.72rem;color:var(--menta);margin-bottom:8px}
+  .back .def{font-size:.9rem}
+  .back .def b{color:var(--oro);font-weight:600}
+  .back .wc-box{margin-top:auto;align-self:flex-start}
+  .face.trapface{border-color:rgba(255,107,120,.4)}
+  .face.trapface .tag{color:var(--coral)}
+
+  /* ---------- QUIZ ---------- */
+  .quiz-wrap{max-width:680px;margin:0 auto}
+  .quiz-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+  .quiz-stat{font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+  .quiz-stat b{color:var(--oro)}
+  .quiz-card{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:26px}
+  .quiz-card .group{font-family:var(--mono);font-size:.66rem;color:var(--menta);text-transform:uppercase;letter-spacing:.6px}
+  .quiz-card .q{font-family:var(--display);font-size:1.18rem;font-weight:600;margin:10px 0 22px}
+  .opt{
+    display:block;width:100%;text-align:left;cursor:pointer;
+    border:1px solid var(--line);background:var(--bg);color:var(--text);
+    border-radius:12px;padding:14px 16px;margin-bottom:11px;font-size:.94rem;
+    font-family:var(--body);transition:.15s;line-height:1.45;
+  }
+  .opt:hover:not(:disabled){border-color:var(--oro)}
+  .opt:disabled{cursor:default}
+  .opt.correct{border-color:var(--menta);background:rgba(95,217,173,.1);color:#bff2e0}
+  .opt.wrong{border-color:var(--coral);background:rgba(255,107,120,.08);color:#ffd2d6}
+  .opt .mk{font-family:var(--mono);font-size:.72rem;float:right;margin-left:10px}
+  .quiz-actions{margin-top:8px;display:flex;justify-content:flex-end}
+  .btn{
+    font-family:var(--mono);font-size:.74rem;letter-spacing:.5px;text-transform:uppercase;
+    cursor:pointer;background:var(--oro);color:#1a1407;border:0;
+    padding:11px 20px;border-radius:10px;transition:.16s;font-weight:700;
+  }
+  .btn:hover{filter:brightness(1.08)}
+  .btn.ghost{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+  .btn.ghost:hover{color:var(--text)}
+  .feedback{font-family:var(--mono);font-size:.78rem;margin:16px 0 4px;min-height:20px}
+  .feedback.ok{color:var(--menta)}
+  .feedback.no{color:var(--coral)}
+
+  .hidden{display:none!important}
+  footer{max-width:1040px;margin:0 auto;padding:0 22px 50px;color:var(--muted);font-family:var(--mono);font-size:.68rem;text-align:center}
+  @media(max-width:560px){
+    .brand .t{font-size:.92rem}
+    .modes{width:100%;margin-left:0;justify-content:space-between}
+    .lead h1{font-size:1.15rem}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <span class="t">Máquina de repaso</span>
+      <span class="s">Análisis Conceptual · UCES · Parcial 18·06</span>
+    </div>
+    <nav class="modes" id="modes">
+      <button data-mode="conceptos" class="active">Conceptos</button>
+      <button data-mode="tarjetas">Tarjetas</button>
+      <button data-mode="quiz">Quiz</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="lead">
+    <div>
+      <h1>Cuatro temas. Definiciones con las palabras del autor.</h1>
+      <p>Cada concepto se responde como <b style="color:var(--oro)">definición atribuida a su autor</b>, con ≤20 palabras y el conteo real a la vista. Lo que la profe valora: fidelidad al término, no paráfrasis.</p>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--oro)"></i> término clave</span>
+        <span><i class="dot" style="background:var(--menta)"></i> autor</span>
+        <span><i class="dot" style="background:var(--coral)"></i> trampa de examen</span>
+      </div>
+    </div>
+    <div class="pill">Solo estos 4 temas</div>
+  </section>
+
+  <!-- CONCEPTOS -->
+  <section id="view-conceptos"></section>
+
+  <!-- TARJETAS -->
+  <section id="view-tarjetas" class="hidden">
+    <div class="cards-toolbar" id="cards-filters"></div>
+    <div class="cards-grid" id="cards-grid"></div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="view-quiz" class="hidden">
+    <div class="quiz-wrap">
+      <div class="quiz-top">
+        <div class="quiz-stat">Pregunta <b id="q-idx">1</b> · Aciertos <b id="q-score">0</b>/<span id="q-total">0</span></div>
+        <button class="btn ghost" id="q-restart">Reiniciar</button>
+      </div>
+      <div class="quiz-card" id="quiz-card"></div>
+    </div>
+  </section>
+</main>
+
+<div id="updbar" class="updbar hidden" role="status" aria-live="polite">
+  <span class="updbar-dot"></span>
+  <div class="updbar-txt"><b>Nueva versión disponible</b><span>Actualizá para ver los últimos cambios</span></div>
+  <button class="updbar-btn" id="updReload">Actualizar</button>
+  <button class="updbar-x" id="updDismiss" aria-label="Cerrar" title="Cerrar">✕</button>
+</div>
+
+<footer>
+  Hecho para memorizar fiel al autor · Fuentes: Marín, <em>Lingüística y enseñanza de la lengua</em> + material de cátedra (UCES).
+</footer>
+
+<script>
+/* ============================================================
+   DATOS · verificados contra Marín (bibliografía) y PPT de cátedra.
+   def = definición ≤20 palabras (vocabulario técnico del autor).
+   El conteo de palabras se calcula en vivo desde el string.
+   ============================================================ */
+const DATA = [
+  {
+    id:"t1", titulo:"Variedades lingüísticas: lectos y registros", who:"Halliday · Marín",
+    concepts:[
+      {q:"¿Qué son las variedades lingüísticas?", au:"Halliday",
+       def:"La lengua como código no es uniforme: varía según el usuario (lectos) y según la situación comunicativa (registros)."},
+      {q:"¿Qué son los lectos?", au:"Halliday",
+       def:"Variedades relacionadas con el usuario: dependen de quién habla —su región, grupo social, ocupación y edad."},
+      {q:"¿Qué es el dialecto?", au:"Halliday",
+       def:"Variedad debida a la región de origen o de adopción del hablante.",
+       nota:"Cátedra · diferencia geográfica · en el análisis: <b>general / regional</b>."},
+      {q:"¿Qué es el sociolecto?", au:"Halliday",
+       def:"Variedad debida al grupo social; expresa la diversidad social e indica patrones jerárquicos dentro de la sociedad.",
+       nota:"Cátedra · diferencias sociales · en el análisis: <b>escolarizado / no escolarizado</b>."},
+      {q:"¿Qué es el cronolecto?", au:"Halliday",
+       def:"Variedad debida al factor edad o factor generacional del hablante.",
+       nota:"Cátedra · diferencia generacional · en el análisis: <b>infantil / adolescente / adulto</b>."},
+      {q:"¿Qué es el idiolecto?", au:"Halliday",
+       def:"Modo peculiar y único de usar el lenguaje que tiene cada individuo; cruce de su dialecto, sociolecto y cronolecto."},
+      {q:"¿Qué son los registros?", au:"Halliday",
+       def:"Variedades acordes con el uso; dependen de la situación comunicativa que exige determinada forma de usar el lenguaje.",
+       nota:"Sus tres opciones, explicadas en la tabla del final del tema. (En Marín se suma «técnico».)"},
+      {q:"¿Cómo se analizan las variedades de un texto?", au:"Cátedra · método",
+       def:"Todo texto se etiqueta con un lecto (sociolecto, cronolecto, dialecto) y un registro de tres opciones.",
+       nota:"El <b>lecto</b> depende del hablante; el <b>registro</b>, de la situación comunicativa. Ver esquema abajo."},
+      {q:"¿En qué NO marcan diferencias los lectos?", au:"Marín", trap:true,
+       def:"Los lectos marcan diferencias en pronunciación, entonación y vocabulario, pero NO en las significaciones (semántica)."}
+    ],
+    metodo:{
+      cols:[
+        {head:"LECTO", sub:"depende del usuario (hablante)", ejes:[
+          ["Sociolecto","escolarizado · no escolarizado"],
+          ["Cronolecto","infantil · adolescente · adulto"],
+          ["Dialecto","general · regional"]
+        ]},
+        {head:"REGISTRO", sub:"depende de la situación comunicativa", ejes:[
+          ["Canal","oral · escrito"],
+          ["Formalidad","formal · informal"],
+          ["Ámbito","profesional · no profesional"]
+        ]}
+      ]
+    },
+    ejemplos:{
+      titulo:"Ejemplos resueltos en clase (14/05)",
+      head:["Texto","Lecto (socio · crono · dialecto)","Registro (canal · formal · ámbito)"],
+      rows:[
+        {t:"Clase explicativa de Análisis Conceptual", l:"escolarizado · adulto · general", r:"oral · formal · profesional"},
+        {t:"Entrevista en vivo a un político", l:"escolarizado · adulto · general", r:"oral · formal · profesional"},
+        {t:"Chat de WhatsApp entre compañeros de la secundaria", l:"escolarizado · adolescente · general", r:"escrito · informal · no profesional"},
+        {t:"Audio de un nene de 3 años contándole al papá", l:"escolarizado · <em>infantil</em> · general", r:"oral · informal · no profesional", flag:true},
+        {t:"Parte médico", l:"escolarizado · adulto · general", r:"escrito · formal · profesional"},
+        {t:"Carta de lectores en un diario matutino", l:"escolarizado · adulto · general", r:"escrito · informal · no profesional"},
+        {t:"Charla telefónica coloquial entre amigos (lunfardo)", l:"escolarizado · adulto · <em>regional</em>", r:"oral · informal · no profesional", flag:true},
+        {t:"Invitación escrita de UCES a sus alumnos", l:"escolarizado · adulto · general", r:"escrito · formal · profesional"}
+      ],
+      pie:"Trampa: lo coloquial/lunfardo es dialecto <b>regional</b> (no general); un nene chico es cronolecto <b>infantil</b>."
+    },
+    desgloses:[
+      { titulo:"Opciones de registro, explicadas",
+        cols:["Opción","Qué distingue"],
+        rows:[
+          {term:"Oral / escrito", exp:"Según el canal: si el texto se transmite por la voz (oral) o por la escritura (escrito)."},
+          {term:"Formal / informal", exp:"Según la formalidad que exige la situación y el vínculo: cuidado (formal) o relajado (informal)."},
+          {term:"Profesional / no profesional", exp:"Según se use o no la jerga profesional u ocupacional propia de un oficio (juristas, médicos, técnicos)."}
+        ]}
+    ]
+  },
+  {
+    id:"t2", titulo:"Funciones del lenguaje", who:"Jakobson · Marín",
+    concepts:[
+      {q:"¿Qué son las funciones del lenguaje?", au:"Jakobson",
+       def:"Las finalidades del uso de la lengua; cada función se relaciona con un elemento del esquema de la comunicación."},
+      {q:"¿Qué es la función referencial?", au:"Jakobson",
+       def:"Centrada en el referente; comunica datos, hechos e ideas. Predomina en textos científicos y expositivos."},
+      {q:"¿Qué es la función apelativa o conativa?", au:"Jakobson",
+       def:"Centrada en el receptor, sobre quien se influye para que actúe o piense de cierta manera (publicidad, discurso político)."},
+      {q:"¿Qué es la función emotiva o expresiva?", au:"Jakobson",
+       def:"Centrada en el emisor; ligada a la necesidad de expresar la propia interioridad del sujeto hablante (conversación, carta íntima)."},
+      {q:"¿Qué es la función fática?", au:"Jakobson",
+       def:"Centrada en el canal; aparece cuando el mayor interés es mantener abierto el canal de comunicación."},
+      {q:"¿Qué es la función poética?", au:"Jakobson",
+       def:"Orientada hacia el mensaje; consiste en la creación de mensajes por el mensaje mismo (textos literarios)."},
+      {q:"¿Qué es la función metalingüística?", au:"Jakobson", wmax:25,
+       def:"Centrada en el código; el lenguaje es el único código reflexivo que se vuelve sobre sí mismo: habla de sí con el mismo código."},
+      {q:"¿Qué hay que recordar sobre las funciones?", au:"Marín", trap:true,
+       def:"Son abstracción teórica; cada texto vehiculiza varias funciones pero predomina una. Los tipos de texto no SON funciones: las vehiculizan."}
+    ],
+    tabla:{
+      titulo:"Cada función según el esquema de la comunicación",
+      head:["Función","Elemento (acento)","Intención"],
+      rows:[
+        ["Referencial","Referente","Informar"],
+        ["Apelativa / conativa","Receptor","Influir sobre el receptor"],
+        ["Emotiva / expresiva","Emisor","Expresar la subjetividad"],
+        ["Fática","Canal","Mantener la comunicación"],
+        ["Poética","Mensaje","Crear arte verbal"],
+        ["Metalingüística","Código","Hablar del lenguaje mismo"]
+      ]
+    }
+  },
+  {
+    id:"t3", titulo:"Texto: conceptos, características y condiciones", who:"Varios autores · Cátedra",
+    concepts:[
+      {q:"¿Qué es un texto?", au:"Concepto cátedra",
+       def:"Cualquier manifestación verbal y completa que se produzca en una comunicación."},
+      {q:"¿Qué es un texto según Lázaro Carreter?", au:"Lázaro Carreter (1971)",
+       def:"Todo conjunto analizable de signos: un fragmento de conversación, una conversación entera, un verso, una novela."},
+      {q:"¿Qué es un texto según Dressler?", au:"Dressler (1973)",
+       def:"El texto es el mayor signo lingüístico."},
+      {q:"¿Qué es un texto según Gal'perin?", au:"Gal'perin (1974)",
+       def:"Mensaje objetivado en forma de documento escrito; compuesto por una serie de enunciados unidos por enlaces léxicos, gramaticales y lógicos."},
+      {q:"¿Qué es un texto según Isenberg?", au:"Isenberg (1976)",
+       def:"La forma primaria de organización en que se manifiesta el lenguaje humano: la comunicación se produce en forma de textos."},
+      {q:"¿Qué es un texto según Bernárdez?", au:"Bernárdez (1982)", wmax:26,
+       def:"Unidad lingüística comunicativa fundamental, resultado de la actividad verbal humana; caracterizada por su cierre semántico, comunicativo y coherencia, surge por la intención del hablante de comunicarse."},
+      {q:"¿Qué es un texto según Lotman?", au:"Lotman (1979)",
+       def:"Cualquier comunicación realizada en un determinado sistema de signos: un ballet, un espectáculo teatral, un poema, un cuadro."}
+    ],
+    tabla:{
+      titulo:"La clave de cada autor (para recordar quién dijo qué)",
+      head:["Autor","Palabra clave","Gancho para recordar"],
+      rows:[
+        ["Lázaro Carreter (1971)","«conjunto analizable de signos»","El más amplio: cualquier conjunto (un verso, una novela)"],
+        ["Dressler (1973)","«el mayor signo lingüístico»","El más corto: el texto es UN signo, pero el más grande"],
+        ["Gal'perin (1974)","«documento escrito»","El único que lo limita a lo escrito (enlaces léxicos, gramaticales, lógicos)"],
+        ["Isenberg (1976)","«forma primaria de organización»","El lenguaje se manifiesta primero como texto"],
+        ["Bernárdez (1982)","«cierre semántico y comunicativo»","El más completo: unidad fundamental + cierre + coherencia"],
+        ["Lotman (1979)","«cualquier sistema de signos»","El semiótico: ballet, teatro, cuadro (no solo lo verbal)"]
+      ],
+      pie:"Base de cátedra (sin autor): «cualquier manifestación verbal y completa que se produzca en una comunicación»."
+    },
+    desgloses:[
+      { titulo:"Características fundamentales del texto (cátedra)",
+        cols:["Característica","Qué significa"],
+        rows:[
+          {term:"Comunicativo", exp:"Se realiza dentro de una actividad comunicativa: siempre se produce para comunicar algo a alguien."},
+          {term:"Pragmático", exp:"Se produce en una situación concreta, con un contexto, un emisor y un propósito determinados."},
+          {term:"Estructurado", exp:"Tiene un orden y reglas propias; organización interna (gramática, puntuación, coherencia) que garantiza el significado."},
+          {term:"Adecuación", exp:"Saber escoger, entre las soluciones que da la lengua, la más apropiada para cada situación."}
+        ]},
+      { titulo:"Condiciones de los textos escritos (cátedra)",
+        cols:["Condición","Qué significa"],
+        rows:[
+          {term:"Adecuados", exp:"Apropiados para el destinatario y para el propósito del escritor: informar, entretener o convencer."},
+          {term:"Efectivos", exp:"Que realmente consigan el propósito con el que fueron escritos."},
+          {term:"Coherentes", exp:"Que la información sea clara, sin contradicciones y bien organizada."},
+          {term:"Correctos", exp:"Que estén escritos sin errores de expresión ni faltas de ortografía, y bien presentados."}
+        ]}
+    ],
+    compareNote:{
+      title:"Diferencia entre características y condiciones",
+      items:[
+        ["Características","Definen QUÉ ES un texto (oral o escrito). Son descriptivas: «se produce…», «está estructurado…»."],
+        ["Condiciones","Requisitos que un texto ESCRITO DEBE cumplir para estar bien. Son prescriptivas: «Que sean…»."]
+      ],
+      foot:"Pista: las condiciones arrancan con «Que sean…» (exigencia). Un texto puede serlo (tiene las características) y aun así estar mal escrito (no cumplir las condiciones)."
+    }
+  },
+  {
+    id:"t4", titulo:"Paratexto, soporte, portador y formato", who:"Cátedra · Marín",
+    concepts:[
+      {q:"¿Qué es el paratexto?", au:"Cátedra",
+       def:"Elementos que acompañan al texto y dan información adicional orientativa previa a la lectura. Son icónicos y verbales."},
+      {q:"¿Qué son los paratextos icónicos?", au:"Cátedra",
+       def:"Tienen que ver con las imágenes (dibujos, gráficos, fotografías)."},
+      {q:"¿Qué son los paratextos verbales?", au:"Cátedra",
+       def:"Tienen que ver con la palabra escrita (título, autor, índice, epígrafe)."},
+      {q:"¿Qué es el soporte?", au:"Cátedra",
+       def:"Material físico usado para reproducir un texto: papel, pantalla, arcilla, papiro, pergamino."},
+      {q:"¿Qué es el portador?", au:"Cátedra",
+       def:"Portador del texto: libro, revista, diario, página web, portal de noticias."},
+      {q:"¿Qué es el formato?", au:"Cátedra",
+       def:"Disposición del texto, su distribución en el soporte: carta, receta, periodístico, publicitario."}
+    ]
+  }
+];
+
+/* contador de palabras real */
+const wc = s => s.trim().split(/\s+/).filter(Boolean).length;
+
+/* ============================================================
+   MODO CONCEPTOS (acordeón)
+   ============================================================ */
+function renderConceptos(){
+  const root = document.getElementById('view-conceptos');
+  root.innerHTML = DATA.map((t,ti)=>`
+    <div class="topic${ti===0?' open':''}" data-topic="${t.id}">
+      <div class="topic-head">
+        <span class="topic-num">${ti+1}</span>
+        <h2>${t.titulo}</h2>
+        <span class="who">${t.who}</span>
+        <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="topic-body">
+        ${t.concepts.map(c=>{
+          const n = wc(c.def);
+          const lim = c.wmax || 20;
+          const warn = n>lim ? ' warn' : '';
+          return `<div class="concept${c.trap?' trap':''}">
+            <div class="q">${c.q} <span class="au">${c.au}</span></div>
+            <div class="def">${c.def}</div>
+            <div class="meta">
+              <span class="wc-box${warn}"><span class="wc">${n}</span> palabras</span>
+              ${c.nota?`<span class="nota">${c.nota}</span>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+        ${t.metodo?renderMetodo(t.metodo):''}
+        ${t.tabla?renderTabla(t.tabla):''}
+        ${t.desgloses?renderDesgloses(t):''}
+        ${t.ejemplos?renderEjemplos(t.ejemplos):''}
+      </div>
+    </div>`).join('');
+
+  root.querySelectorAll('.topic-head').forEach(h=>{
+    h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+  });
+}
+
+/* esquema de análisis (lecto / registro) dictado por la cátedra */
+function renderMetodo(m){
+  return `<div class="metodo">
+    <div class="metodo-title">Esquema de análisis · cátedra</div>
+    <div class="metodo-grid">
+      ${m.cols.map(c=>`
+        <div class="metodo-col">
+          <div class="mc-head">${c.head}<span>${c.sub}</span></div>
+          ${c.ejes.map(e=>`<div class="mc-eje"><b>${e[0]}</b><span>${e[1]}</span></div>`).join('')}
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* envoltorio de desgloses: si el tema tiene compareNote, pone las tablas a la izquierda
+   y una nota desplegable a la derecha, centrada verticalmente entre ellas */
+function renderDesgloses(t){
+  const tablas = t.desgloses.map(renderDesgloseTabla).join('');
+  if(t.compareNote){
+    return `<div class="tx-split">
+      <div class="tx-left">${tablas}</div>
+      <aside class="tx-note">${renderNote(t.compareNote)}</aside>
+    </div>`;
+  }
+  return tablas;
+}
+
+/* nota desplegable (abrir/cerrar con <details> nativo) */
+function renderNote(n){
+  return `<details class="note-det">
+    <summary><span class="note-ic">⚖</span><span>${n.title}</span><span class="note-hint">▾</span></summary>
+    <div class="note-body">
+      ${n.items.map(it=>`<p><b>${it[0]}:</b> ${it[1]}</p>`).join('')}
+      ${n.foot?`<p class="note-foot">${n.foot}</p>`:''}
+    </div>
+  </details>`;
+}
+
+/* tabla de DESGLOSE: característica / explicación / conteo (formato propio, distinto a las tarjetas) */
+function renderDesgloseTabla(d){
+  return `<div class="dtab">
+    <div class="dtab-title"><span class="dtab-tag">Tabla</span> ${d.titulo}</div>
+    <div class="dtab-grid">
+      <div class="dtab-row dtab-head"><span>${d.cols[0]}</span><span>${d.cols[1]}</span><span>pal.</span></div>
+      ${d.rows.map(r=>{const n=wc(r.exp);const warn=n>20?' warn':'';
+        return `<div class="dtab-row"><span class="dt-term">${r.term}</span><span class="dt-exp">${r.exp}</span><span class="dt-wc${warn}">${n}</span></div>`;}).join('')}
+    </div>
+  </div>`;
+}
+
+/* tabla de referencia genérica (3 columnas) */
+function renderTabla(tb){
+  return `<div class="ejemplos">
+    <div class="metodo-title">${tb.titulo}</div>
+    <div class="ej-table gen-table">
+      <div class="ej-row ej-head"><span>${tb.head[0]}</span><span>${tb.head[1]}</span><span>${tb.head[2]}</span></div>
+      ${tb.rows.map(r=>`<div class="ej-row"><span>${r[0]}</span><span>${r[1]}</span><span>${r[2]}</span></div>`).join('')}
+    </div>
+    ${tb.pie?`<div class="ej-pie">${tb.pie}</div>`:''}
+  </div>`;
+}
+
+/* tabla de ejemplos resueltos en clase */
+function renderEjemplos(ej){
+  return `<div class="ejemplos">
+    <div class="metodo-title">${ej.titulo}</div>
+    <div class="ej-table">
+      <div class="ej-row ej-head"><span>${ej.head[0]}</span><span>${ej.head[1]}</span><span>${ej.head[2]}</span></div>
+      ${ej.rows.map(r=>`<div class="ej-row${r.flag?' ej-flag':''}"><span>${r.t}</span><span>${r.l}</span><span>${r.r}</span></div>`).join('')}
+    </div>
+    ${ej.pie?`<div class="ej-pie">⚠ ${ej.pie}</div>`:''}
+  </div>`;
+}
+
+/* ============================================================
+   MODO TARJETAS (flip)
+   ============================================================ */
+let cardFilter = 'all';
+function renderTarjetas(){
+  const filters = document.getElementById('cards-filters');
+  filters.innerHTML =
+    `<button class="filterbtn${cardFilter==='all'?' active':''}" data-f="all">Todos</button>` +
+    DATA.map((t,i)=>`<button class="filterbtn${cardFilter===t.id?' active':''}" data-f="${t.id}">Tema ${i+1}</button>`).join('');
+  filters.querySelectorAll('.filterbtn').forEach(b=>{
+    b.addEventListener('click',()=>{cardFilter=b.dataset.f;renderTarjetas();});
+  });
+
+  const grid = document.getElementById('cards-grid');
+  const list = DATA.filter(t=>cardFilter==='all'||t.id===cardFilter)
+                   .flatMap(t=>t.concepts);
+  grid.innerHTML = list.map(c=>{
+    const n = wc(c.def);
+    const warn = n>(c.wmax||20)?' warn':'';
+    return `<div class="flip">
+      <div class="flip-inner">
+        <div class="face front${c.trap?' trapface':''}">
+          <span class="tag">${c.trap?'⚠ Trampa':'Consigna'}</span>
+          <div class="q">${c.q}</div>
+          <div class="hint">tocar para ver la definición →</div>
+        </div>
+        <div class="face back${c.trap?' trapface':''}">
+          <span class="tag">${c.au}</span>
+          <div class="au"></div>
+          <div class="def">${c.def}</div>
+          <span class="wc-box${warn}"><span class="wc">${n}</span> palabras</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.flip').forEach(f=>{
+    f.addEventListener('click',()=>f.classList.toggle('flipped'));
+  });
+}
+
+/* ============================================================
+   MODO QUIZ — elegir la definición correcta del autor
+   distractores = definiciones de otros conceptos del MISMO tema
+   ============================================================ */
+let quiz = [];
+let qi = 0, score = 0;
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function buildQuiz(){
+  quiz = [];
+  DATA.forEach(t=>{
+    if(t.concepts.length<4) return;
+    t.concepts.forEach(c=>{
+      const pool = t.concepts.filter(x=>x.def!==c.def);
+      const distract = shuffle(pool).slice(0,3).map(x=>x.def);
+      quiz.push({
+        group:t.titulo,
+        prompt:c.q.startsWith('¿')?c.q:`¿${c.q}?`,
+        au:c.au,
+        correct:c.def,
+        options:shuffle([c.def,...distract])
+      });
+    });
+  });
+  quiz = shuffle(quiz);
+  qi = 0; score = 0;
+  document.getElementById('q-total').textContent = quiz.length;
+  renderQuestion();
+}
+
+function renderQuestion(){
+  document.getElementById('q-idx').textContent = qi+1;
+  document.getElementById('q-score').textContent = score;
+  const item = quiz[qi];
+  const card = document.getElementById('quiz-card');
+  card.innerHTML = `
+    <div class="group">${item.group}</div>
+    <div class="q">${item.prompt} <span style="color:var(--menta);font-family:var(--mono);font-size:.8rem">— ${item.au}</span></div>
+    <div id="opts">${item.options.map(o=>`<button class="opt">${o}</button>`).join('')}</div>
+    <div class="feedback" id="fb"></div>
+    <div class="quiz-actions"><button class="btn hidden" id="q-next">Siguiente →</button></div>
+  `;
+  const opts = card.querySelectorAll('.opt');
+  opts.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const correct = btn.textContent.trim()===item.correct.trim();
+      opts.forEach(b=>{
+        b.disabled=true;
+        if(b.textContent.trim()===item.correct.trim()){b.classList.add('correct');b.innerHTML+=' <span class="mk">✓</span>';}
+      });
+      const fb = document.getElementById('fb');
+      if(correct){score++;fb.textContent='Correcto. Esa es la redacción del autor.';fb.className='feedback ok';}
+      else{btn.classList.add('wrong');btn.innerHTML+=' <span class="mk">✕</span>';fb.textContent='Esa es de otro concepto. La verde es la del autor.';fb.className='feedback no';}
+      document.getElementById('q-score').textContent=score;
+      const next=document.getElementById('q-next');
+      next.classList.remove('hidden');
+      next.textContent = qi+1<quiz.length ? 'Siguiente →' : 'Ver resultado';
+      next.onclick=()=>{ if(qi+1<quiz.length){qi++;renderQuestion();} else renderResult(); };
+    });
+  });
+}
+
+function renderResult(){
+  const card = document.getElementById('quiz-card');
+  const pct = Math.round(score/quiz.length*100);
+  card.innerHTML = `
+    <div class="group">Resultado</div>
+    <div class="q">${score}/${quiz.length} · ${pct}%</div>
+    <p style="color:var(--muted);margin-bottom:20px">${pct>=80?'Listo para defender las definiciones tal cual las pide la cátedra.':pct>=50?'Vas bien. Repasá las que confundís en modo Tarjetas.':'Volvé a Conceptos y fijá el vocabulario del autor antes de reintentar.'}</p>
+    <div class="quiz-actions"><button class="btn" onclick="buildQuiz()">Reintentar</button></div>
+  `;
+  document.getElementById('q-idx').textContent = quiz.length;
+}
+
+/* ============================================================
+   NAVEGACIÓN DE MODOS
+   ============================================================ */
+const views = {
+  conceptos:document.getElementById('view-conceptos'),
+  tarjetas:document.getElementById('view-tarjetas'),
+  quiz:document.getElementById('view-quiz')
+};
+document.getElementById('modes').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  const m=b.dataset.mode;
+  Object.entries(views).forEach(([k,el])=>el.classList.toggle('hidden',k!==m));
+  if(m==='tarjetas') renderTarjetas();
+  if(m==='quiz' && quiz.length===0) buildQuiz();
+});
+document.getElementById('q-restart').addEventListener('click',buildQuiz);
+
+/* init */
+renderConceptos();
+
+/* ---------- AVISO DE NUEVA VERSIÓN ----------
+   Cada deploy reemplaza 20260618-152701 y escribe el mismo valor en version.txt.
+   Si la página abierta detecta que version.txt cambió, muestra el popup. */
+const APP_VERSION="20260618-152701";
+let notifiedVer=null;
+function showUpdate(){
+  const b=document.getElementById('updbar');
+  b.classList.remove('hidden');
+  void b.offsetWidth;        // fuerza reflow para animar
+  b.classList.add('show');
+}
+function hideUpdate(){
+  const b=document.getElementById('updbar');
+  b.classList.remove('show');
+  b.classList.add('hidden');
+}
+function checkVersion(){
+  fetch('/version.txt?ts='+Date.now(),{cache:'no-store'})
+    .then(r=>r.ok?r.text():'')
+    .then(v=>{ v=(v||'').trim();
+      if(v && v!==APP_VERSION && v!==notifiedVer){ notifiedVer=v; showUpdate(); } })
+    .catch(()=>{});
+}
+document.getElementById('updReload').addEventListener('click',()=>location.reload());
+document.getElementById('updDismiss').addEventListener('click',hideUpdate);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkVersion(); });
+window.addEventListener('focus',checkVersion);
+setInterval(checkVersion,15000);
+checkVersion();
+</script>
+</body>
+</html>
