@@ -270,6 +270,22 @@
   .feedback.ok{color:var(--menta)}
   .feedback.no{color:var(--coral)}
 
+  /* MODO ESCRIBIR (recuerdo activo) */
+  .esc-input{width:100%;min-height:120px;resize:vertical;background:var(--bg);border:1px solid var(--line);
+    border-radius:12px;color:var(--text);font-family:var(--body);font-size:.95rem;line-height:1.55;padding:14px 16px;margin-bottom:14px}
+  .esc-input:focus{outline:none;border-color:var(--oro)}
+  .esc-input:disabled{opacity:.7}
+  .esc-answer{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+  .esc-block{margin-bottom:14px}
+  .esc-lbl{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:6px}
+  .esc-yours p{font-size:.92rem;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;white-space:pre-wrap;margin:0}
+  .esc-ok{border-left:3px solid var(--menta);padding-left:14px}
+  .esc-ok .def{font-size:.98rem;color:var(--text);margin:0 0 8px}
+  .esc-ok .wc-box{display:inline-block}
+  .esc-rate{font-family:var(--mono);font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .esc-rate .rate{font-family:var(--mono);font-size:.72rem;cursor:pointer;background:var(--surface);border:1px solid var(--line);color:var(--text);padding:8px 14px;border-radius:8px;transition:.15s}
+  .esc-rate .rate:hover{border-color:var(--oro);color:var(--oro)}
+
   .hidden{display:none!important}
   footer{max-width:1040px;margin:0 auto;padding:0 22px 50px;color:var(--muted);font-family:var(--mono);font-size:.68rem;text-align:center}
   @media(max-width:560px){
@@ -291,6 +307,7 @@
       <button data-mode="conceptos" class="active">Conceptos</button>
       <button data-mode="tarjetas">Tarjetas</button>
       <button data-mode="quiz">Quiz</button>
+      <button data-mode="escribir">Escribir</button>
     </nav>
   </div>
 </header>
@@ -326,6 +343,17 @@
         <button class="btn ghost" id="q-restart">Reiniciar</button>
       </div>
       <div class="quiz-card" id="quiz-card"></div>
+    </div>
+  </section>
+
+  <!-- ESCRIBIR (recuerdo activo) -->
+  <section id="view-escribir" class="hidden">
+    <div class="quiz-wrap">
+      <div class="quiz-top">
+        <div class="quiz-stat">Consigna <b id="e-idx">1</b>/<span id="e-total">0</span> · De memoria <b id="e-score">0</b></div>
+        <button class="btn ghost" id="e-restart">Reiniciar</button>
+      </div>
+      <div class="quiz-card" id="esc-card"></div>
     </div>
   </section>
 </main>
@@ -756,12 +784,76 @@ function renderResult(){
 }
 
 /* ============================================================
+   MODO ESCRIBIR — recordar de memoria y autoevaluar
+   ============================================================ */
+let escList=[], ei=0, escore=0;
+function escFlatten(){
+  const out=[];
+  DATA.forEach(t=>{
+    t.concepts.forEach(c=>out.push({q:c.q,au:c.au,def:c.def,topic:t.titulo}));
+    (t.desgloses||[]).forEach(d=>d.rows.forEach(r=>out.push({q:'¿Qué significa «'+r.term+'»?',au:d.cols[0]+' · cátedra',def:r.exp,topic:t.titulo})));
+  });
+  return out;
+}
+function buildEscribir(){
+  escList=shuffle(escFlatten()); ei=0; escore=0;
+  document.getElementById('e-total').textContent=escList.length;
+  renderEsc();
+}
+function renderEsc(){
+  document.getElementById('e-idx').textContent=ei+1;
+  document.getElementById('e-score').textContent=escore;
+  const it=escList[ei];
+  const card=document.getElementById('esc-card');
+  card.innerHTML=
+    '<div class="group">'+it.topic+'</div>'+
+    '<div class="q">'+it.q+' <span style="color:var(--menta);font-family:var(--mono);font-size:.8rem">— '+it.au+'</span></div>'+
+    '<textarea id="e-input" class="esc-input" placeholder="Escribí la definición de memoria, sin mirar…" spellcheck="false"></textarea>'+
+    '<div class="quiz-actions"><button class="btn" id="e-reveal">Revelar respuesta</button></div>'+
+    '<div id="e-answer" class="esc-answer hidden"></div>';
+  const ta=document.getElementById('e-input'); ta.focus();
+  function reveal(){
+    if(ta.disabled) return;
+    const n=wc(it.def);
+    const yours=(ta.value.trim()||'(no escribiste nada)').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const ans=document.getElementById('e-answer');
+    ans.innerHTML=
+      '<div class="esc-block esc-yours"><span class="esc-lbl">Lo que escribiste</span><p>'+yours+'</p></div>'+
+      '<div class="esc-block esc-ok"><span class="esc-lbl">Definición correcta — '+it.au+'</span><p class="def">'+it.def+'</p><span class="wc-box"><span class="wc">'+n+'</span> palabras</span></div>'+
+      '<div class="esc-rate">¿Te salió de memoria?'+
+        '<button class="rate" data-r="1">Sí</button>'+
+        '<button class="rate" data-r="m">Más o menos</button>'+
+        '<button class="rate" data-r="0">No</button>'+
+      '</div>';
+    ans.classList.remove('hidden');
+    document.getElementById('e-reveal').disabled=true; ta.disabled=true;
+    ans.querySelectorAll('.rate').forEach(b=>b.addEventListener('click',()=>{
+      if(b.dataset.r==='1') escore++;
+      if(ei+1<escList.length){ ei++; renderEsc(); } else escResult();
+    }));
+    ans.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  ta.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='Enter') reveal(); });
+  document.getElementById('e-reveal').addEventListener('click',reveal);
+}
+function escResult(){
+  document.getElementById('e-idx').textContent=escList.length;
+  document.getElementById('e-score').textContent=escore;
+  document.getElementById('esc-card').innerHTML=
+    '<div class="group">Resultado</div>'+
+    '<div class="q">'+escore+'/'+escList.length+' de memoria</div>'+
+    '<p style="color:var(--muted);margin-bottom:20px">Lo que marcaste «No» o «Más o menos» es lo que conviene repasar en Conceptos antes de volver a intentar.</p>'+
+    '<div class="quiz-actions"><button class="btn" onclick="buildEscribir()">Reintentar</button></div>';
+}
+
+/* ============================================================
    NAVEGACIÓN DE MODOS
    ============================================================ */
 const views = {
   conceptos:document.getElementById('view-conceptos'),
   tarjetas:document.getElementById('view-tarjetas'),
-  quiz:document.getElementById('view-quiz')
+  quiz:document.getElementById('view-quiz'),
+  escribir:document.getElementById('view-escribir')
 };
 document.getElementById('modes').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
@@ -771,16 +863,18 @@ document.getElementById('modes').addEventListener('click',e=>{
   Object.entries(views).forEach(([k,el])=>el.classList.toggle('hidden',k!==m));
   if(m==='tarjetas') renderTarjetas();
   if(m==='quiz' && quiz.length===0) buildQuiz();
+  if(m==='escribir' && escList.length===0) buildEscribir();
 });
 document.getElementById('q-restart').addEventListener('click',buildQuiz);
+document.getElementById('e-restart').addEventListener('click',buildEscribir);
 
 /* init */
 renderConceptos();
 
 /* ---------- AVISO DE NUEVA VERSIÓN ----------
-   Cada deploy reemplaza 20260618-152701 y escribe el mismo valor en version.txt.
+   Cada deploy reemplaza 20260618-160251 y escribe el mismo valor en version.txt.
    Si la página abierta detecta que version.txt cambió, muestra el popup. */
-const APP_VERSION="20260618-152701";
+const APP_VERSION="20260618-160251";
 let notifiedVer=null;
 function showUpdate(){
   const b=document.getElementById('updbar');
